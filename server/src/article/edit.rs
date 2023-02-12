@@ -1,13 +1,7 @@
+use crate::{errors::CustomError, models::article::Article, AppState};
+use ntex::web::types::{Json, State};
 use std::sync::Arc;
 
-use ntex::web::{
-    self,
-    types::{Json, State},
-};
-
-use crate::{errors::CustomError, models::article::Article, AppState};
-
-#[web::put("/article")]
 pub async fn edit_article(
     article: Json<Article>,
     state: State<Arc<AppState>>,
@@ -18,6 +12,10 @@ pub async fn edit_article(
         Some(id) => id,
         None => return Err(CustomError::BadRequest("请提供要修改的文章ID".into())),
     };
+
+    sqlx::query!("SELECT title FROM articles WHERE id = $1", id)
+        .fetch_one(db_pool)
+        .await?;
 
     sqlx::query!(
         "UPDATE articles SET title = $1, content = $2 WHERE id = $3",

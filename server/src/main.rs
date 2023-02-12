@@ -1,8 +1,8 @@
 mod article;
 mod errors;
+mod middlewares;
 mod models;
-use crate::errors::CustomError;
-use article::{edit, new, view};
+mod user;
 use ntex::web::{self, middleware, App, HttpServer};
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use std::{env, sync::Arc};
@@ -35,11 +35,7 @@ async fn main() {
         App::new()
             .state(Arc::clone(&app_state))
             .wrap(middleware::Logger::default())
-            .service(index)
-            .service(error)
-            .service(view::get_all_articles)
-            .service(new::new_article)
-            .service(edit::edit_article)
+            .configure(|cfg| route(Arc::clone(&app_state), cfg))
     })
     .bind("0.0.0.0:12345")
     .unwrap()
@@ -48,12 +44,23 @@ async fn main() {
     .unwrap()
 }
 
-#[web::get("/")]
-async fn index() -> String {
-    "Hello, world".into()
-}
-
-#[web::get("/error")]
-async fn error() -> Result<String, CustomError> {
-    Err(CustomError::NotFound("Not found".into()))
+fn route(state: Arc<AppState>, cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/article")
+            .wrap(middlewares::auth::CheckLogin {
+                db_pool: state.db_pool.clone(),
+                admin: true
+            })
+            .route("/{id}", web::get().to(article::view::get_article))
+            .route("/{id}", web::delete().to(article::delete::delete_article))
+            .route("", web::post().to(article::new::new_article))
+            .route("", web::post().to(article::view::get_article))
+            .route("", web::put().to(article::edit::edit_article))
+            .route(
+                "/search/{keyword}",
+                web::get().to(article::search::search_article),
+            ),
+    )
+    .service(web::scope("/articles").route("", web::get().to(article::view::get_articles_preview)))
+    .service(web::scope("/user").route("/login", web::post().to(user::login::github_login)));
 }

@@ -8,6 +8,7 @@ use std::fmt;
 pub enum CustomError {
     NotFound(String),
     BadRequest(String),
+    AuthFailed(String),
     InternalServerError(String),
 }
 
@@ -16,6 +17,7 @@ impl WebResponseError for CustomError {
         match self {
             Self::NotFound(_) => StatusCode::NOT_FOUND,
             Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::AuthFailed(_) => StatusCode::UNAUTHORIZED,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
         }
     }
@@ -24,6 +26,7 @@ impl WebResponseError for CustomError {
             match self {
                 Self::NotFound(e) => e,
                 Self::InternalServerError(e) => e,
+                Self::AuthFailed(e) => e,
                 Self::BadRequest(e) => e,
             }
             .into(),
@@ -37,6 +40,7 @@ impl fmt::Display for CustomError {
             Self::NotFound(e) => write!(f, "{e}"),
             Self::InternalServerError(e) => write!(f, "{e}"),
             Self::BadRequest(e) => write!(f, "{e}"),
+            Self::AuthFailed(e) => write!(f, "{e}"),
         }
     }
 }
