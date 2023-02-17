@@ -1,4 +1,5 @@
 mod article;
+mod comment;
 mod errors;
 mod middlewares;
 mod models;
@@ -47,14 +48,15 @@ async fn main() {
 fn route(state: Arc<AppState>, cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/article")
-            .wrap(middlewares::auth::CheckLogin {
-                db_pool: state.db_pool.clone(),
-                admin: true
-            })
+            // 用FromRequest代替中间件实现身份认证
+            // .wrap(middlewares::auth::CheckLogin {
+            //     db_pool: state.db_pool.clone(),
+            //     admin: true,
+            // })
             .route("/{id}", web::get().to(article::view::get_article))
             .route("/{id}", web::delete().to(article::delete::delete_article))
             .route("", web::post().to(article::new::new_article))
-            .route("", web::post().to(article::view::get_article))
+            .route("", web::get().to(article::view::get_article))
             .route("", web::put().to(article::edit::edit_article))
             .route(
                 "/search/{keyword}",
@@ -62,5 +64,17 @@ fn route(state: Arc<AppState>, cfg: &mut web::ServiceConfig) {
             ),
     )
     .service(web::scope("/articles").route("", web::get().to(article::view::get_articles_preview)))
-    .service(web::scope("/user").route("/login", web::post().to(user::login::github_login)));
+    .service(web::scope("/user").route("/login", web::post().to(user::login::github_login)))
+    .service(
+        web::scope("/comment")
+            .route(
+                "/{article_id}",
+                web::get().to(comment::view::get_comments_for_article),
+            )
+            .route(
+                "/{comment_id}",
+                web::delete().to(comment::delete::delete_comment),
+            )
+            .route("", web::post().to(comment::new::new_comment)),
+    );
 }

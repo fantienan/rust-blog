@@ -1,0 +1,5 @@
+# 详见trukrs.dev
+
+[[proxy]]
+rewrite = "/api/"
+backend = "http://localhost:12345"
